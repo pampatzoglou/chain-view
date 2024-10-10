@@ -18,7 +18,7 @@ services:
   #     - chain-view-network
 
   postgresql:
-    image: bitnami/postgresql:16
+    image: postgres:16
     container_name: chain-view-postgresql
     hostname: chain-view-postgresql
     environment:
@@ -28,7 +28,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - ${PWD}/.local/db_data:/bitnami/postgresql/data
+      - .local/db_data:/var/lib/postgresql/data
     networks:
       - chain-view-network
 
