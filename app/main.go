@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -39,23 +38,25 @@ type Config struct {
 	} `yaml:"endpoints"`
 }
 
+var logger *logging.Logger
+
 func main() {
 	// Load configuration
 	config := loadConfig("config/config.yaml")
 
 	// Initialize the logger with the specified log level
-	logger := logging.NewLogger(config.Server.Logging.Level)
+	logger = logging.NewLogger(config.Server.Logging.Level)
 
-	// Initialize the endpoint pool
-	ep := endpoints.EndpointPool{
-		Endpoints: config.Endpoints.Chains,
-	}
+	// // Initialize the endpoint pool
+	// ep := endpoints.EndpointPool{
+	// 	Endpoints: config.Endpoints.Chains,
+	// }
 
 	// Start a goroutine to simulate updating metrics
 	go func() {
 		for {
 			// Fetch data from endpoints and update metrics
-			updateMetricsFromEndpoints(ep, logger)
+			// updateMetricsFromEndpoints(ep)
 			time.Sleep(10 * time.Second) // Adjust the interval as needed
 		}
 	}()
@@ -64,9 +65,7 @@ func main() {
 	http.HandleFunc("/healthz/health", healthCheckHandler)
 	http.HandleFunc("/healthz/ready", readinessCheckHandler)
 	http.HandleFunc("/healthz/start", startupCheckHandler)
-	http.HandleFunc("/healthz/level", func(w http.ResponseWriter, r *http.Request) {
-		handleLogLevelUpdate(w, r, logger)
-	})
+	http.HandleFunc("/healthz/level", handleLogLevelUpdate)
 
 	// Prometheus metrics endpoint
 	http.Handle("/healthz/metrics", promhttp.Handler())
@@ -79,9 +78,9 @@ func main() {
 	signal.Notify(shutdownChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		logger.Info(fmt.Sprintf("Starting server on :%d", config.Server.Port))
+		logger.WithFields(map[string]interface{}{"port": config.Server.Port}).Info("Starting server")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal(err.Error())
+			logger.WithError(err).Fatal("Server failed to start")
 		}
 	}()
 
@@ -96,8 +95,7 @@ func main() {
 
 	// Shut down the server gracefully
 	if err := server.Shutdown(ctx); err != nil {
-		// Change this line to use log.Fatalf
-		log.Fatalf("Server forced to shutdown: %v", err)
+		logger.WithError(err).Fatal("Server forced to shutdown")
 	}
 
 	logger.Info("Server exited gracefully")
@@ -107,22 +105,22 @@ func main() {
 func loadConfig(filename string) Config {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Fatalf("Error reading config file: %v", err)
+		logger.WithError(err).Fatal("Error reading config file")
 	}
 
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		log.Fatalf("Error parsing config file: %v", err)
+		logger.WithError(err).Fatal("Error parsing config file")
 	}
 
 	return config
 }
 
 // Function to fetch data from endpoints and update metrics
-func updateMetricsFromEndpoints(ep endpoints.EndpointPool, logger *logging.Logger) {
+func updateMetricsFromEndpoints(ep endpoints.EndpointPool) {
 	for _, endpoint := range ep.Endpoints {
 		// Simulate making a request to the endpoint
-		logger.Info(fmt.Sprintf("Fetching data from %s", endpoint.Name))
+		logger.WithFields(map[string]interface{}{"name": endpoint.Name}).Info("Fetching data from endpoint")
 		// Here you would add logic to make an actual request to the endpoint
 
 		// Update metrics with dummy data for demonstration purposes
@@ -152,7 +150,7 @@ func startupCheckHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler for updating log level
-func handleLogLevelUpdate(w http.ResponseWriter, r *http.Request, logger *logging.Logger) {
+func handleLogLevelUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -169,6 +167,8 @@ func handleLogLevelUpdate(w http.ResponseWriter, r *http.Request, logger *loggin
 
 	// Update log level
 	logger.SetLevel(req.Level)
+	logger.WithFields(map[string]interface{}{"level": req.Level}).Info("Log level updated")
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("Log level updated to: %s", req.Level)))
 }

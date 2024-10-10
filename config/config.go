@@ -1,10 +1,12 @@
 package config
 
 import (
-	"log"
 	"os"
 
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/pampatzoglou/chain-view/internal/logging"
 )
 
 // Config structure to hold application configuration
@@ -43,22 +45,40 @@ type EndpointConfig struct {
 
 // Endpoint structure to hold individual endpoint details
 type Endpoint struct {
-	URL string `yaml:"url"`
+	URL  string `yaml:"url"`
+	Name string `yaml:"name"`
 }
 
 // LoadConfig loads the configuration from a YAML file
-func LoadConfig(filename string) Config {
+func LoadConfig(filename string, logger *logging.Logger) (*Config, error) {
+	logger.WithFields(logrus.Fields{
+		"filename": filename,
+	}).Info("Loading configuration file")
+
 	file, err := os.Open(filename)
 	if err != nil {
-		log.Fatalf("Error opening config file: %v", err)
+		logger.WithFields(logrus.Fields{
+			"error": err,
+			"file":  filename,
+		}).Error("Failed to open config file")
+		return nil, err
 	}
 	defer file.Close()
 
 	var config Config
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {
-		log.Fatalf("Error decoding config file: %v", err)
+		logger.WithFields(logrus.Fields{
+			"error": err,
+			"file":  filename,
+		}).Error("Failed to decode config file")
+		return nil, err
 	}
 
-	return config
+	logger.WithFields(logrus.Fields{
+		"server_port": config.Server.Port,
+		"log_level":   config.Server.Logging.Level,
+	}).Info("Configuration loaded successfully")
+
+	return &config, nil
 }
