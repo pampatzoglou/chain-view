@@ -11,6 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"database/sql"
+
+	_ "github.com/lib/pq" // PostgreSQL driver
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/yaml.v2"
 
@@ -40,12 +44,28 @@ type Config struct {
 
 var logger *logging.Logger
 
+var db *sql.DB
+
 func main() {
 	// Load configuration
 	config := loadConfig("config/config.yaml")
 
 	// Initialize the logger with the specified log level
 	logger = logging.NewLogger(config.Server.Logging.Level)
+
+	// Connect to the database
+	var err error
+	db, err = sql.Open("postgres", config.Database.URL)
+	if err != nil {
+		logger.WithError(err).Fatal("Failed to connect to the database")
+	}
+	defer db.Close()
+
+	// Ping the database to verify the connection
+	err = db.Ping()
+	if err != nil {
+		logger.WithError(err).Fatal("Failed to ping the database")
+	}
 
 	// // Initialize the endpoint pool
 	// ep := endpoints.EndpointPool{
@@ -63,7 +83,7 @@ func main() {
 
 	// Set up HTTP handlers
 	http.HandleFunc("/healthz/health", healthCheckHandler)
-	http.HandleFunc("/healthz/ready", readinessCheckHandler)
+	// http.HandleFunc("/healthz/ready", readinessCheckHandler)
 	http.HandleFunc("/healthz/start", startupCheckHandler)
 	http.HandleFunc("/healthz/level", handleLogLevelUpdate)
 
@@ -135,9 +155,23 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-// Readiness check handler
+// // Readiness check handler
 func readinessCheckHandler(w http.ResponseWriter, r *http.Request) {
-	// Here you could check database connections, etc.
+	// Check if the database connection is established
+	if db == nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte("Database connection not established"))
+		return
+	}
+
+	// Perform a simple query to check if the database is ready
+	_, err := db.Exec("SELECT 1") // Replace with a suitable query for your database
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(fmt.Sprintf("Database not ready: %v", err)))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Ready"))
 }

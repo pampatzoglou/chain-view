@@ -1,9 +1,9 @@
 server:
   port: 9000
   logging:
-    level: "info"  # Options: debug, info, warn, error
+    level: "debug"  # Options: debug, info, warn, error
   database:
-    url: "postgresql://user:password@localhost:5432/chain-view"
+    url: "postgres://postgres:postgres@chain-view-postgresql:5432/chain-view"
   redis:
     url: "redis://localhost:6379"
 

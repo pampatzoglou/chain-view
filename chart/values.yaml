@@ -80,3 +80,113 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+metrics:
+  podMonitor:
+    enabled: false
+    namespace: ""
+    jobLabel: ""
+    interval: 30s
+    scrapeTimeout: ""
+    honorLabels: false
+    labels:
+      release: prometheus
+  serviceMonitor:
+    enabled: false
+    namespace: ""
+    jobLabel: ""
+    interval: 30s
+    scrapeTimeout: ""
+    honorLabels: false
+    labels:
+      release: prometheus
+  prometheusRule:
+    enabled: false
+    namespace: ""
+    additionalLabels:
+      release: prometheus
+    rules: []
+
+rbac:
+  create: false
+  rules: []
+
+networkPolicy:
+  enabled: false
+  metrics:
+    enabled: false
+    selector: {}
+  ingressRules:
+    enabled: false
+    selector: {}
+    customRules: []
+
+config:
+  existingSecret: ""
+  server:
+    port: 9000
+    logging:
+      level: "debug"  # Options: debug, info, warn, error
+    database:
+      url: "postgres://postgres:postgres@chain-view-postgresql:5432/chain-view"
+      maxConnections: 4
+      maxQueueTime: 1s
+      minConnections: 3
+      healthCheckPeriod: 10s
+      maxConnIdleTime: 5s
+      healthCheckTimeout: 5s
+      maxConnWaitTimeout: 5s
+    redis:
+      url: "redis://localhost:6379"
+  chains:
+    ethereum:
+      chain_id: 1
+      network: mainnet
+      endpoints:
+        - name: infura
+          url: https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID
+          api_key: YOUR_INFURA_API_KEY
+          timeout: 3s
+      pooling_strategy: round_robin
+      retry_count: 3
+      retry_backoff: 2s
+
+    polygon:
+      chain_id: 137
+      network: mainnet
+      endpoints:
+        - name: infura
+          url: https://polygon-mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID
+          api_key: YOUR_INFURA_API_KEY
+          timeout: 3s
+      pooling_strategy: fastest
+      retry_count: 2
+      retry_backoff: 1s
+
+    binance_smart_chain:
+      chain_id: 56
+      network: mainnet
+      endpoints:
+        - name: binance_rpc
+          url: https://bsc-dataseed.binance.org/
+          timeout: 3s
+      pooling_strategy: retry_with_next
+      retry_count: 4
+      retry_backoff: 3s
+
+    avalanche:
+      chain_id: 43114
+      network: mainnet
+      endpoints:
+        - name: avax_infura
+          url: https://avalanche-mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID
+          api_key: YOUR_INFURA_API_KEY
+          timeout: 3s
+      pooling_strategy: round_robin
+      retry_count: 3
+      retry_backoff: 1.5s
+
+  global_settings:
+    request_timeout: 10s     # Default request timeout for all chains
+    max_retries: 5           # Default maximum retries for any request
+    retry_backoff: 2s        # Default backoff time between retries

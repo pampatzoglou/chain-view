@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/pampatzoglou/chain-view/internal/logging"
-	"github.com/sirupsen/logrus" // Add this import for logrus
+	"github.com/sirupsen/logrus"
 )
 
 // Endpoint represents a single endpoint with its properties.
@@ -86,8 +86,11 @@ func (ep *EndpointPool) RetryWithNext(ctx context.Context, requestBody []byte, l
 	for _, endpoint := range ep.Endpoints {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.URL, bytes.NewReader(requestBody))
 		if err != nil {
-			logger.WithError(err).Error("Failed to create request")
-			return "", err
+			logger.WithFields(logrus.Fields{
+				"endpoint": endpoint.Name,
+				"error":    err.Error(),
+			}).Error("Failed to create request")
+			continue
 		}
 		client := &http.Client{Timeout: endpoint.Timeout}
 		resp, err := client.Do(req)
