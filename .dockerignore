@@ -10,3 +10,4 @@ scripts/
 docker-compose.yaml
 skaffold.yaml
 
+.local/db_data/*

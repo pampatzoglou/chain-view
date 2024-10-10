@@ -7,7 +7,7 @@ FROM golang:${GO_VERSION}-alpine AS builder
 RUN apk add --no-cache git
 
 # Install the golang-migrate tool
-RUN go install github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.1
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.1
 
 # If you need a smaller final image, for instance using it in runtime,
 # you can use a second stage to copy only the necessary binaries:
@@ -24,6 +24,7 @@ COPY --chown=nobody:nogroup migrations /migrations
 
 # Set default entrypoint for running the migrate command
 USER nobody
+
 ENTRYPOINT ["/usr/local/bin/migrate"]
 
 # Optional: if you want to default to the version output or help

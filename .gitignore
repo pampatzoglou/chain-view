@@ -25,4 +25,4 @@ go.work.sum
 .env
 
 # Ignore everything inside .local/db_data
-.local/db_data/*
+.local/db_data/

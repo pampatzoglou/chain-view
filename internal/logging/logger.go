@@ -60,6 +60,12 @@ func (l *Logger) WithFields(fields map[string]interface{}) *Logger {
 	}
 }
 
+// Fatalf logs a message at Fatal level and then exits the program
+func (l *Logger) Fatalf(format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	log.Fatal(msg) // or l.LogFatal(msg) if you have a method for logging fatal errors
+}
+
 // WithError creates a new logger instance including error information.
 func (l *Logger) WithError(err error) *Logger {
 	return l.WithFields(map[string]interface{}{"error": err.Error()})

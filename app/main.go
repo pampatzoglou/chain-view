@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -56,7 +60,7 @@ func main() {
 		}
 	}()
 
-	// Health check endpoints
+	// Set up HTTP handlers
 	http.HandleFunc("/healthz/health", healthCheckHandler)
 	http.HandleFunc("/healthz/ready", readinessCheckHandler)
 	http.HandleFunc("/healthz/start", startupCheckHandler)
@@ -68,10 +72,35 @@ func main() {
 	http.Handle("/healthz/metrics", promhttp.Handler())
 
 	// Start the HTTP server
-	logger.Info(fmt.Sprintf("Starting server on :%d", config.Server.Port))
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", config.Server.Port), nil); err != nil {
-		logger.Fatal(err.Error())
+	server := &http.Server{Addr: fmt.Sprintf(":%d", config.Server.Port)}
+
+	// Channel for graceful shutdown signals
+	shutdownChan := make(chan os.Signal, 1)
+	signal.Notify(shutdownChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		logger.Info(fmt.Sprintf("Starting server on :%d", config.Server.Port))
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal(err.Error())
+		}
+	}()
+
+	// Wait for a shutdown signal
+	<-shutdownChan
+
+	logger.Info("Shutting down server...")
+
+	// Set a timeout for graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Shut down the server gracefully
+	if err := server.Shutdown(ctx); err != nil {
+		// Change this line to use log.Fatalf
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
+
+	logger.Info("Server exited gracefully")
 }
 
 // Function to load configuration from a YAML file
