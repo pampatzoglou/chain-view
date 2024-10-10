@@ -1,0 +1,84 @@
+server:
+  port: 9001
+  logging:
+    level: "info"  # Options: debug, info, warn, error
+  database:
+    url: "postgresql://user:password@localhost:5432/mydb"
+  redis:
+    url: "redis://localhost:6379"
+
+# Main configuration file for blockchain data retrieval
+
+chains:
+  ethereum:
+    chain_id: 1
+    network: mainnet
+    endpoints:
+      - name: infura
+        url: https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID
+        api_key: YOUR_INFURA_API_KEY
+        timeout: 3s
+      - name: alchemy
+        url: https://eth-mainnet.alchemyapi.io/v2/YOUR_ALCHEMY_API_KEY
+        api_key: YOUR_ALCHEMY_API_KEY
+        timeout: 3s
+      - name: private_node
+        url: http://private-node.local:8545
+        timeout: 5s
+    pooling_strategy: round_robin
+    retry_count: 3
+    retry_backoff: 2s
+
+  polygon:
+    chain_id: 137
+    network: mainnet
+    endpoints:
+      - name: infura
+        url: https://polygon-mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID
+        api_key: YOUR_INFURA_API_KEY
+        timeout: 3s
+      - name: alchemy
+        url: https://polygon-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY
+        api_key: YOUR_ALCHEMY_API_KEY
+        timeout: 3s
+      - name: quicknode
+        url: https://your-polygon-quicknode-url.com
+        api_key: YOUR_QUICKNODE_API_KEY
+        timeout: 4s
+    pooling_strategy: fastest
+    retry_count: 2
+    retry_backoff: 1s
+
+  binance_smart_chain:
+    chain_id: 56
+    network: mainnet
+    endpoints:
+      - name: binance_rpc
+        url: https://bsc-dataseed.binance.org/
+        timeout: 3s
+      - name: private_node
+        url: http://bsc-private-node.local:8545
+        timeout: 5s
+    pooling_strategy: retry_with_next
+    retry_count: 4
+    retry_backoff: 3s
+
+  avalanche:
+    chain_id: 43114
+    network: mainnet
+    endpoints:
+      - name: avax_infura
+        url: https://avalanche-mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID
+        api_key: YOUR_INFURA_API_KEY
+        timeout: 3s
+      - name: avax_private
+        url: http://avax-private.local:9650
+        timeout: 5s
+    pooling_strategy: round_robin
+    retry_count: 3
+    retry_backoff: 1.5s
+
+global_settings:
+  request_timeout: 10s     # Default request timeout for all chains
+  max_retries: 5           # Default maximum retries for any request
+  retry_backoff: 2s        # Default backoff time between retries
