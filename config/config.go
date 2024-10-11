@@ -1,84 +1,99 @@
 package config
 
 import (
-	"os"
+	"fmt"
+	"time"
 
-	"github.com/sirupsen/logrus"
+	"io/ioutil"
+
 	"gopkg.in/yaml.v2"
-
-	"github.com/pampatzoglou/chain-view/internal/logging"
 )
 
-// Config structure to hold application configuration
+// Config represents the top-level configuration structure
 type Config struct {
-	Server    ServerConfig   `yaml:"server"`
-	Database  DatabaseConfig `yaml:"database"`
-	Redis     RedisConfig    `yaml:"redis"`
-	Endpoints EndpointConfig `yaml:"endpoints"`
+	Server         ServerConfig   `yaml:"server"`
+	Database       DatabaseConfig `yaml:"database"` // Database configuration at the top level
+	Redis          RedisConfig    `yaml:"redis"`
+	Chains         []ChainConfig  `yaml:"chains"`
+	GlobalSettings GlobalSettings `yaml:"global_settings"`
 }
 
-// ServerConfig structure to hold server-specific settings
+// ServerConfig represents the server configuration
 type ServerConfig struct {
 	Port    int           `yaml:"port"`
 	Logging LoggingConfig `yaml:"logging"`
 }
 
-// LoggingConfig structure to hold logging settings
+// LoggingConfig represents the logging configuration
 type LoggingConfig struct {
-	Level string `yaml:"level"` // Options: debug, info, warn, error
+	Level string `yaml:"level"`
 }
 
-// DatabaseConfig structure to hold database settings
+// DatabaseConfig represents the database configuration
 type DatabaseConfig struct {
 	URL string `yaml:"url"`
 }
 
-// RedisConfig structure to hold Redis settings
+// RedisConfig represents the Redis configuration
 type RedisConfig struct {
 	URL string `yaml:"url"`
 }
 
-// EndpointConfig structure to hold endpoint settings
+// ChainConfig represents the configuration for a single chain
+type ChainConfig struct {
+	ChainID         int              `yaml:"chain_id"`
+	Network         string           `yaml:"network"`
+	Endpoints       []EndpointConfig `yaml:"endpoints"`
+	PoolingStrategy string           `yaml:"pooling_strategy"`
+	RetryCount      int              `yaml:"retry_count"`
+	RetryBackoff    Duration         `yaml:"retry_backoff"`
+}
+
+// EndpointConfig represents a single endpoint configuration
 type EndpointConfig struct {
-	Chains []Endpoint `yaml:"chains"`
+	Name    string   `yaml:"name"`
+	URL     string   `yaml:"url"`
+	Timeout Duration `yaml:"timeout"`
 }
 
-// Endpoint structure to hold individual endpoint details
-type Endpoint struct {
-	URL  string `yaml:"url"`
-	Name string `yaml:"name"`
+// Duration is a wrapper around time.Duration to handle YAML duration parsing
+type Duration struct {
+	time.Duration
 }
 
-// LoadConfig loads the configuration from a YAML file
-func LoadConfig(filename string, logger *logging.Logger) (*Config, error) {
-	logger.WithFields(logrus.Fields{
-		"filename": filename,
-	}).Info("Loading configuration file")
-
-	file, err := os.Open(filename)
-	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"error": err,
-			"file":  filename,
-		}).Error("Failed to open config file")
-		return nil, err
+// UnmarshalYAML customizes the unmarshal function for the Duration type
+func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
 	}
-	defer file.Close()
+	duration, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	d.Duration = duration
+	return nil
+}
+
+// GlobalSettings represents the global settings configuration
+type GlobalSettings struct {
+	RequestTimeout Duration `yaml:"request_timeout"`
+	MaxRetries     int      `yaml:"max_retries"`
+	MaxWorkers     int      `yaml:"max_workers"`
+	RetryBackoff   Duration `yaml:"retry_backoff"`
+}
+
+// LoadConfig loads the configuration from the specified YAML file
+func LoadConfig(filename string) (*Config, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("error reading config file: %w", err)
+	}
 
 	var config Config
-	decoder := yaml.NewDecoder(file)
-	if err := decoder.Decode(&config); err != nil {
-		logger.WithFields(logrus.Fields{
-			"error": err,
-			"file":  filename,
-		}).Error("Failed to decode config file")
-		return nil, err
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("error parsing config file: %w", err)
 	}
-
-	logger.WithFields(logrus.Fields{
-		"server_port": config.Server.Port,
-		"log_level":   config.Server.Logging.Level,
-	}).Info("Configuration loaded successfully")
 
 	return &config, nil
 }

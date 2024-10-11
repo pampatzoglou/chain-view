@@ -24,6 +24,14 @@ var (
 		},
 		[]string{"chain", "provider"},
 	)
+
+	JobRetries = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "job_retries_total",
+			Help: "Total number of retries for jobs per endpoint",
+		},
+		[]string{"chain", "endpoint"},
+	)
 )
 
 // MetricsManager handles the registration and updating of metrics
@@ -41,7 +49,7 @@ func NewMetricsManager(logger *logging.Logger) *MetricsManager {
 // RegisterMetrics registers all metrics with Prometheus
 func (mm *MetricsManager) RegisterMetrics() {
 	mm.logger.Info("Registering Prometheus metrics")
-
+	prometheus.MustRegister(JobRetries)
 	prometheus.MustRegister(FinalizedBlocks)
 	prometheus.MustRegister(CurrentBlockHeight)
 
@@ -56,7 +64,6 @@ func (mm *MetricsManager) UpdateMetrics(chain, provider string, finalizedBlocks,
 		"finalizedBlocks": finalizedBlocks,
 		"currentHeight":   currentHeight,
 	}).Debug("Updating metrics")
-
 	FinalizedBlocks.WithLabelValues(chain, provider).Set(finalizedBlocks)
 	CurrentBlockHeight.WithLabelValues(chain, provider).Set(currentHeight)
 }

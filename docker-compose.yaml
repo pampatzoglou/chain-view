@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   chain-view:
     container_name: chain-view
