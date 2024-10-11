@@ -239,12 +239,16 @@ func (ep *EndpointPool) worker(id int, jobs <-chan Job, wg *sync.WaitGroup, logg
 		}
 
 		start := time.Now()
-		err := ep.fetchData(job.ctx, job.Endpoint, logger)
+		err := ep.fetchData(job.ctx, job.Endpoint)
 		duration := time.Since(start).Seconds()
 
 		ep.responseDuration.WithLabelValues(job.Endpoint.Name, job.Endpoint.URL).Observe(duration)
 
-		if err != nil {
+		if err == nil {
+			ep.jobSuccesses.WithLabelValues(job.Endpoint.Name, job.Endpoint.URL).Inc()
+			ep.circuitBreaker.RecordSuccess()
+			logger.Infof("Worker %d successfully processed job for %s", id, job.Endpoint.URL)
+		} else {
 			ep.jobFailures.WithLabelValues(job.Endpoint.Name, job.Endpoint.URL).Inc()
 			ep.circuitBreaker.RecordFailure()
 			logger.WithError(err).Errorf("Worker %d failed to fetch data from %s", id, job.Endpoint.URL)
@@ -255,10 +259,6 @@ func (ep *EndpointPool) worker(id int, jobs <-chan Job, wg *sync.WaitGroup, logg
 				time.Sleep(backoff)
 				ep.JobQueue <- job
 			}
-		} else {
-			ep.jobSuccesses.WithLabelValues(job.Endpoint.Name, job.Endpoint.URL).Inc()
-			ep.circuitBreaker.RecordSuccess()
-			logger.Infof("Worker %d successfully processed job for %s", id, job.Endpoint.URL)
 		}
 	}
 }
@@ -277,7 +277,7 @@ func (ep *EndpointPool) StartWorkers(ctx context.Context, numWorkers int, logger
 }
 
 // FetchData fetches data from an endpoint and handles timeouts.
-func (ep *EndpointPool) fetchData(ctx context.Context, endpoint Endpoint, logger *logging.Logger) error {
+func (ep *EndpointPool) fetchData(ctx context.Context, endpoint Endpoint) error {
 	client := &http.Client{
 		Timeout: endpoint.Timeout,
 	}
