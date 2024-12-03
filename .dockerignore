@@ -1,0 +1,13 @@
+# Ignore all hidden files (files starting with a dot)
+.*
+# Ignore all Dockerfiles
+**/[Dd]ockerfile
+
+chart/
+.git
+
+scripts/
+docker-compose.yaml
+skaffold.yaml
+
+.local/db_data/*

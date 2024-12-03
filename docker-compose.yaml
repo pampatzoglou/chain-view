@@ -1,0 +1,53 @@
+services:
+  chain-view:
+    container_name: chain-view
+    hostname: chain-view
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@chain-view-postgresql:5432/chain-view?sslmode=disable
+    ports:
+      - 9000:9000
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - chain-view-network
+
+  postgresql:
+    image: postgres:16
+    container_name: chain-view-postgresql
+    hostname: chain-view-postgresql
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: chain-view
+    ports:
+      - 5432:5432
+    volumes:
+      - .local/db_data:/var/lib/postgresql/data
+    networks:
+      - chain-view-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  migrate:
+    container_name: chain-view-migrations
+    build:
+      context: .
+      dockerfile: migrations/Dockerfile
+      target: development
+    entrypoint: ["migrate", "-path", "/migrations", "-database", "postgres://postgres:postgres@chain-view-postgresql:5432/chain-view?sslmode=disable", "up"]
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - chain-view-network
+
+networks:
+  chain-view-network:

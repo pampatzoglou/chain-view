@@ -1,0 +1,27 @@
+apiVersion: skaffold/v4beta1
+kind: Config
+metadata:
+  name: chain-view
+build:
+  local:
+    push: false
+  tagPolicy:
+    gitCommit: {}
+  artifacts:
+    - &build-app
+      image: ghcr.io/pampatzoglou/chain-view
+      docker:
+        target: development
+        dockerfile: Dockerfile
+    - &build-migrations
+      image: ghcr.io/pampatzoglou/chain-view-migrations
+      docker:
+        target: development
+        dockerfile: migrations/Dockerfile
+
+
+# Define multiple profiles: default for Docker Compose, and "kubernetes" for Kubernetes with Helm.
+profiles:
+  - name: default
+    activation: [{}]
+

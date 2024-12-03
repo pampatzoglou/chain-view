@@ -1,0 +1,24 @@
+server:
+  port: 9000
+  logging:
+    level: "debug"  # Options: debug, info, warn, error
+  database:
+    url: "postgres://postgres:postgres@chain-view-postgresql:5432/chain-view"
+chains:
+  - chain_id: 1
+    network: mainnet-ethereum
+    endpoints:
+      - name: infura
+        url: https://mainnet.infura.io/v3/FOO
+        timeout: 3s
+      - name: alchemy
+        url: https://eth-mainnet.g.alchemy.com/v2/FOO
+        timeout: 3s
+    pooling_strategy: round_robin
+    retry_count: 3
+    retry_backoff: 2s
+global_settings:
+  request_timeout: 10s
+  max_retries: 5
+  max_workers: 10
+  retry_backoff: 2s
